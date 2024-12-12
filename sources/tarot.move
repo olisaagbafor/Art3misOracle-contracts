@@ -43,14 +43,16 @@ module admin::tarot {
     //The minimum price of minting a reading, in APT.
     const MINTING_PRICE: u64 = 10000000; //0.1
     //The minimum price of getting a reading, in APT.
-    const READING_PRICE: u64 = 30000000; //0.3
+    const READING_PRICE: u64 = 10000000; //0.1
 
     // NFT collection information
     const COLLECTION_NAME: vector<u8> = b"ART3MIS_TAROT";
     const COLLECTION_DESCRIPTION: vector<u8> = b"Art3misOracle Tarot, powered by Aptos Randomness";
-    const COLLECTION_URI: vector<u8> = b"ipfs://bafybeigtyace3x4a65spsaaagbhsbanq5qgntk5pqpdum67gvaqp4cj5uy/cover.png";
+    const COLLECTION_URI: vector<u8> = b"ipfs://bafybeihwfoxpqtks7625ut64ka6jgpc3j6nscha4cwtzerlfttd4pizcdq/cover.png";
 
-    const MAJOR_ARCANA_CARD_URI: vector<u8> = b"ipfs://bafybeigtyace3x4a65spsaaagbhsbanq5qgntk5pqpdum67gvaqp4cj5uy/";
+    const MAJOR_ARCANA_CARD_URI_UPRIGHT: vector<u8> = b"ipfs://bafybeiel3ftyc3pkjfnb5dseioeuoewr5xqqpxqyb2737e4shfkvnbrkuy/";
+    const MAJOR_ARCANA_CARD_URI_REVERSE: vector<u8> = b"ipfs://bafybeibktknj7ztgmtts6y7mhdi2obvfvdotqochsqawlimicsguauygcu/";
+
 
     const MAJOR_ARCANA_NAME: vector<vector<u8>> = vector[
        (b"0 The Fool"),
@@ -165,9 +167,9 @@ module admin::tarot {
     entry fun draws_card(
         user: &signer,
     ){
-        check_if_user_has_enough_apt(signer::address_of(user));
-        // Payment
-        coin::transfer<AptosCoin>(user, @treasury, READING_PRICE);
+        // check_if_user_has_enough_apt(signer::address_of(user));
+        // // Payment
+        // coin::transfer<AptosCoin>(user, @treasury, READING_PRICE);
         // Pick a random card between 0 to 21
         let card_no = randomness::u64_range(0, 22);
         let card = string::utf8(*vector::borrow(&MAJOR_ARCANA_NAME, card_no));
@@ -176,7 +178,11 @@ module admin::tarot {
             if(randomness::u8_range(0,2) == 0){
                 string::utf8(b"upright")
             }else{string::utf8(b"reverse")};
-        let card_uri = string::utf8(MAJOR_ARCANA_CARD_URI);
+        let card_uri = if(position == string::utf8(b"upright")){
+            string::utf8(MAJOR_ARCANA_CARD_URI_UPRIGHT)
+            }else{
+                string::utf8(MAJOR_ARCANA_CARD_URI_REVERSE)
+                };
         string::append(&mut card_uri, string_utils::format1(&b"{}.png", card_no));
         event::emit(CardDrawnEvent {
             card,
@@ -184,6 +190,7 @@ module admin::tarot {
             position
         });
     }
+
     public entry fun mint_card(
         user: &signer,
         question: String,
@@ -202,9 +209,13 @@ module admin::tarot {
             string::bytes(&card) == c
         });
         let royalty = royalty::create(5,100,@treasury);
-        let token_uri = string::utf8(MAJOR_ARCANA_CARD_URI);
+        let token_uri = if(position == string::utf8(b"upright")){
+            string::utf8(MAJOR_ARCANA_CARD_URI_UPRIGHT)
+            }else{
+                string::utf8(MAJOR_ARCANA_CARD_URI_REVERSE)
+                };
         string::append(&mut token_uri, string_utils::format1(&b"{}.png", card_no));
-        let token_name = string_utils::format1(&b"Aptos_Tarot #{}", state.minted + 1);
+        let token_name = string_utils::format1(&b"Art3mis_Tarot #{}", state.minted + 1);
         // Create a new named token:
         let token_const_ref = token::create_named_token(
             &res_signer,
@@ -396,7 +407,7 @@ module admin::tarot {
         let expected_nft_token_address = token::create_token_address(
             &resource_account_address,
             &string::utf8(COLLECTION_NAME),
-            &string_utils::format1(&b"Aptos_Tarot #{}", 1)
+            &string_utils::format1(&b"Art3mis_Tarot #{}", 1)
         );
         let nft_token_object = object::address_to_object<token::Token>(expected_nft_token_address);
         assert!(
@@ -408,7 +419,7 @@ module admin::tarot {
             4
         );
         assert!(
-            token::name(nft_token_object) == string_utils::format1(&b"Aptos_Tarot #{}", state.minted),
+            token::name(nft_token_object) == string_utils::format1(&b"Art3mis_Tarot #{}", state.minted),
             4
         );
         assert!(
