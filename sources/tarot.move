@@ -52,6 +52,7 @@ module admin::tarot {
 
     const MAJOR_ARCANA_CARD_URI_UPRIGHT: vector<u8> = b"ipfs://bafybeiel3ftyc3pkjfnb5dseioeuoewr5xqqpxqyb2737e4shfkvnbrkuy/";
     const MAJOR_ARCANA_CARD_URI_REVERSE: vector<u8> = b"ipfs://bafybeibktknj7ztgmtts6y7mhdi2obvfvdotqochsqawlimicsguauygcu/";
+    const MAJOR_ARCANA_CARD_URI: vector<u8> = b"ipfs://bafybeigtyace3x4a65spsaaagbhsbanq5qgntk5pqpdum67gvaqp4cj5uy/";
 
 
     const MAJOR_ARCANA_NAME: vector<vector<u8>> = vector[
@@ -165,7 +166,7 @@ module admin::tarot {
 
     #[randomness]
     entry fun draws_card(
-        user: &signer,
+        _user: &signer,
     ){
         // check_if_user_has_enough_apt(signer::address_of(user));
         // // Payment
