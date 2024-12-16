@@ -173,7 +173,7 @@ module admin::tarot {
         // coin::transfer<AptosCoin>(user, @treasury, READING_PRICE);
         // Pick a random card between 0 to 21
         let card_no = randomness::u64_range(0, 22);
-        let card = string::utf8(*vector::borrow(&MAJOR_ARCANA_NAME, card_no));
+        let card = string::utf8(MAJOR_ARCANA_NAME[card_no]);
         // 0 = upright, 1 = reverse
         let position =
             if(randomness::u8_range(0,2) == 0){
@@ -203,7 +203,7 @@ module admin::tarot {
         check_if_user_has_enough_apt(user_add);
         // Payment
         coin::transfer<AptosCoin>(user, @treasury, MINTING_PRICE);
-        let state = borrow_global_mut<State>(@admin);
+        let state = &mut State[@admin];
         let res_signer = account::create_signer_with_capability(&state.signer_cap);
         let (_found, card_no) = vector::find(&MAJOR_ARCANA_NAME, |obj|{
             let c: &vector<u8> = obj;
@@ -240,12 +240,12 @@ module admin::tarot {
         //          - PROPERTY_KEY_READING
         //          - PROPERTY_KEY_TIMESTAMP
         let prop_keys = vector[
-            string::utf8(*vector::borrow(&PROPERTY_KEY,0)),
-            string::utf8(*vector::borrow(&PROPERTY_KEY,1)),
-            string::utf8(*vector::borrow(&PROPERTY_KEY,2)),
-            string::utf8(*vector::borrow(&PROPERTY_KEY,3)),
-            string::utf8(*vector::borrow(&PROPERTY_KEY,4)),
-            string::utf8(*vector::borrow(&PROPERTY_KEY,5))
+            string::utf8(PROPERTY_KEY[0]),
+            string::utf8(PROPERTY_KEY[1]),
+            string::utf8(PROPERTY_KEY[2]),
+            string::utf8(PROPERTY_KEY[3]),
+            string::utf8(PROPERTY_KEY[4]),
+            string::utf8(PROPERTY_KEY[5])
         ];
 
         let prop_types = vector[
@@ -279,7 +279,7 @@ module admin::tarot {
 
         move_to<Reading>(&obj_signer, new_nft_token);
 
-        state.minted = state.minted + 1;
+        state.minted += 1;
 
         // Emit a new ReadingMintedEvent
         event::emit(ReadingMintedEvent{
@@ -287,7 +287,7 @@ module admin::tarot {
             reading: obj_add,
             timestamp: now
         });
-        state.reading_minted_events = state.reading_minted_events + 1;
+        state.reading_minted_events +=  1;
     }
 
     //==============================================================================================
@@ -300,7 +300,7 @@ module admin::tarot {
 
     #[view]
     public fun get_collection_address(): address acquires State {
-        let state = borrow_global_mut<State>(@admin);
+        let state = &mut State[@admin];
         collection::create_collection_address(
             &signer::address_of(&account::create_signer_with_capability(&state.signer_cap)),
             &string::utf8(COLLECTION_NAME)
@@ -337,12 +337,11 @@ module admin::tarot {
         init_module(admin);
 
         let expected_resource_account_address = account::create_resource_address(&admin_address, SEED);
-        assert!(account::exists_at(expected_resource_account_address), 0);
+        assert!(account::exists_at(expected_resource_account_address));
 
-        let state = borrow_global<State>(admin_address);
+        let state = &State[admin_address];
         assert!(
-            account::get_signer_capability_address(&state.signer_cap) == expected_resource_account_address,
-            0
+            account::get_signer_capability_address(&state.signer_cap) == expected_resource_account_address
         );
 
         let expected_collection_address = collection::create_collection_address(
@@ -351,23 +350,19 @@ module admin::tarot {
         );
         let collection_object = object::address_to_object<collection::Collection>(expected_collection_address);
         assert!(
-            collection::creator<collection::Collection>(collection_object) == expected_resource_account_address,
-            4
+            collection::creator<collection::Collection>(collection_object) == expected_resource_account_address
         );
         assert!(
-            collection::name<collection::Collection>(collection_object) == string::utf8(COLLECTION_NAME),
-            4
+            collection::name<collection::Collection>(collection_object) == string::utf8(COLLECTION_NAME)
         );
         assert!(
-            collection::description<collection::Collection>(collection_object) == string::utf8(COLLECTION_DESCRIPTION),
-            4
+            collection::description<collection::Collection>(collection_object) == string::utf8(COLLECTION_DESCRIPTION)
         );
         assert!(
-            collection::uri<collection::Collection>(collection_object) == string::utf8(COLLECTION_URI),
-            4
+            collection::uri<collection::Collection>(collection_object) == string::utf8(COLLECTION_URI)
         );
 
-        assert!(state.reading_minted_events == 0, 2);
+        assert!(state.reading_minted_events == 0);
     }
 
     #[test(admin = @admin, user = @0xA, treasury = @treasury)]
@@ -399,11 +394,11 @@ module admin::tarot {
 
         let question = string::utf8(b"test_question");
         let reading = string::utf8(b"you are a fool");
-        let card = *vector::borrow(&MAJOR_ARCANA_NAME, 0);
+        let card = MAJOR_ARCANA_NAME[0];
         let position = string::utf8(b"upright");
         mint_card(user,question,reading,string::utf8(card),position);
 
-        let state = borrow_global<State>(admin_address);
+        let state = &State[admin_address];
 
         let expected_nft_token_address = token::create_token_address(
             &resource_account_address,
@@ -412,34 +407,28 @@ module admin::tarot {
         );
         let nft_token_object = object::address_to_object<token::Token>(expected_nft_token_address);
         assert!(
-            object::is_owner(nft_token_object, user_address) == true,
-            1
+            object::is_owner(nft_token_object, user_address) == true
         );
         assert!(
-            token::creator(nft_token_object) == resource_account_address,
-            4
+            token::creator(nft_token_object) == resource_account_address
         );
         assert!(
-            token::name(nft_token_object) == string_utils::format1(&b"Art3mis_Tarot #{}", state.minted),
-            4
+            token::name(nft_token_object) == string_utils::format1(&b"Art3mis_Tarot #{}", state.minted)
         );
         assert!(
-            token::description(nft_token_object) == reading,
-            4
+            token::description(nft_token_object) == reading
         );
         assert!(
-            token::uri(nft_token_object) == expected_image_uri,
-            4
+            token::uri(nft_token_object) == expected_image_uri
         );
         assert!(
-            option::is_some<royalty::Royalty>(&token::royalty(nft_token_object)),
-            4
+            option::is_some<royalty::Royalty>(&token::royalty(nft_token_object))
         );
 
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
 
-        assert!(state.reading_minted_events == 1, 2);
+        assert!(state.reading_minted_events == 1);
 
     }
 

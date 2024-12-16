@@ -5,8 +5,8 @@ upgrade_policy = "compatible"
 
 [addresses]
 std = "0x1"
-admin = "<0xaddress>"
-treasury = "<0xaddress>"
+admin = "_"
+treasury = "_"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "testnet" }
