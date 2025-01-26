@@ -7,10 +7,10 @@ Welcome to **Artemis Oracle**, your one-stop **AI on-chain tarot** platform. Thi
 ## **Table of Contents**  
 - [Overview](#overview)  
 - [User Flow Steps](#user-flow-steps)  
-  - [Connecting Your Wallet](#step-1-connecting-your-wallet)  
-  - [Asking Your Question](#step-2-asking-your-question)  
-  - [Drawing a Tarot Card](#step-3-drawing-a-tarot-card)  
-  - [Saving Your Reading](#step-4-saving-your-reading-as-an-nft)  
+  - [Connecting Your Wallet](#connecting-your-wallet)  
+  - [Asking Your Question](#asking-your-question)  
+  - [Drawing a Tarot Card](#drawing-a-tarot-card)  
+  - [Saving Your Reading](#saving-your-reading)  
 
 ---
 
