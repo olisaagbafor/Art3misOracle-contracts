@@ -1,4 +1,4 @@
-# **Artemis Oracle User Flow Documentation**  
+# **Art3mis Oracle User Flow Documentation**  
 
 Welcome to **Art3mis Oracle**, your one-stop **AI on-chain tarot** platform. This guide will walk you through connecting your wallet, asking questions, drawing tarot cards on-chain, and saving your readings as NFTs for future reference.  
 
