@@ -106,6 +106,11 @@ module admin::tarot {
         b"PROPERTY_KEY_ZODIAC"
     ];
 
+    // Add new collection constant
+    const HOROSCOPE_COLLECTION_NAME: vector<u8> = b"ART3MIS_HOROSCOPE";
+    const HOROSCOPE_COLLECTION_DESCRIPTION: vector<u8> = b"Art3misOracle Horoscope, powered by Aptos Randomness";
+    const HOROSCOPE_COLLECTION_URI: vector<u8> = b"ipfs://bafybeihwfoxpqtks7625ut64ka6jgpc3j6nscha4cwtzerlfttd4pizcdq/horoscope.png";
+
     //==============================================================================================
     // Module Structs
     //==============================================================================================
@@ -128,6 +133,7 @@ module admin::tarot {
         signer_cap: SignerCapability,
         //count
         minted: u64,
+        horoscope_minted: u64,  // New field
         // Events
         reading_minted_events: u64,
     }
@@ -180,10 +186,20 @@ module admin::tarot {
             string::utf8(COLLECTION_URI)
         );
 
+        // Create horoscope collection
+        collection::create_unlimited_collection(
+            &resource_signer,
+            string::utf8(HOROSCOPE_COLLECTION_DESCRIPTION),
+            string::utf8(HOROSCOPE_COLLECTION_NAME),
+            option::some(royalty),
+            string::utf8(HOROSCOPE_COLLECTION_URI)
+        );
+
         // Create the State global resource and move it to the admin account
         let state = State{
             signer_cap: resource_cap,
             minted: 0,
+            horoscope_minted: 0,
             reading_minted_events: 0
         };
         move_to<State>(admin, state);
@@ -466,6 +482,93 @@ module admin::tarot {
         state.reading_minted_events +=  1;
     }
 
+    // New function for horoscope minting
+    public entry fun mint_horoscope(
+        user: &signer,
+        fortune: String,
+        card: String,
+        position: String,
+        zodiac: String,
+        horoscope: String
+    ) acquires State {
+        let user_add = signer::address_of(user);
+        check_if_user_has_enough_apt(user_add);
+        // Payment
+        coin::transfer<AptosCoin>(user, @treasury, MINTING_PRICE);
+        let state = &mut State[@admin];
+        let res_signer = account::create_signer_with_capability(&state.signer_cap);
+
+        // Format current date for token name (e.g., "24JAN2025")
+        let current_time = timestamp::now_seconds();
+        let date_string = format_date(current_time);
+        let token_name = string_utils::format2(&b"{}_{}", zodiac, date_string);
+
+        // Create token in new collection
+        let token_const_ref = token::create_named_token(
+            &res_signer,
+            string::utf8(HOROSCOPE_COLLECTION_NAME),
+            fortune,  // Using fortune instead of reading
+            token_name,
+            option::some(royalty::create(5,100,@treasury)),
+            get_card_uri(card, position)
+        );
+
+        let obj_signer = object::generate_signer(&token_const_ref);
+        let obj_add = object::address_from_constructor_ref(&token_const_ref);
+
+        // Transfer the token to the user account
+        object::transfer_raw(&res_signer, obj_add, user_add);
+
+        // Create the property_map for the new token with the following properties:
+        //          - PROPERTY_KEY_TOKEN_NAME
+        //          - PROPERTY_KEY_CARD_NAME
+        //          - PROPERTY_KEY_CARD_POSITION
+        //          - PROPERTY_KEY_TIMESTAMP
+        //          - PROPERTY_KEY_HOROSCOPE
+        //          - PROPERTY_KEY_ZODIAC
+        let prop_keys = vector[
+            string::utf8(PROPERTY_KEY[0]),
+            string::utf8(PROPERTY_KEY[1]),
+            string::utf8(PROPERTY_KEY[2]),
+            string::utf8(PROPERTY_KEY[5]),
+            string::utf8(PROPERTY_KEY[6]),
+            string::utf8(PROPERTY_KEY[7])
+        ];
+
+        let prop_types = vector[
+            string::utf8(b"0x1::string::String"),
+            string::utf8(b"0x1::string::String"),
+            string::utf8(b"0x1::string::String"),
+            string::utf8(b"u64"),
+            string::utf8(b"0x1::string::String"),
+            string::utf8(b"0x1::string::String")
+        ];
+
+        let now = timestamp::now_seconds();
+        let prop_values = vector[
+            bcs::to_bytes(&token_name),
+            bcs::to_bytes(&card),
+            bcs::to_bytes(&position),
+            bcs::to_bytes(&now),
+            bcs::to_bytes(&horoscope),
+            bcs::to_bytes(&zodiac)
+        ];
+
+        let token_prop_map = property_map::prepare_input(prop_keys,prop_types,prop_values);
+        property_map::init(&token_const_ref,token_prop_map);
+
+        // Create the ErebrusToken object and move it to the new token object signer
+        let new_nft_token = Reading {
+            mutator_ref: token::generate_mutator_ref(&token_const_ref),
+            burn_ref: token::generate_burn_ref(&token_const_ref),
+            property_mutator_ref: property_map::generate_mutator_ref(&token_const_ref),
+        };
+
+        move_to<Reading>(&obj_signer, new_nft_token);
+
+        state.horoscope_minted += 1;
+    }
+
     //==============================================================================================
     // Helper functions
     //==============================================================================================
@@ -500,6 +603,57 @@ module admin::tarot {
         string::utf8(ZODIAC_SIGNS[sign])
     }
 
+    // Helper function to format date
+    fun format_date(timestamp: u64): String {
+        // Convert timestamp to days, months, years
+        let seconds_per_day = 86400;
+        let days = timestamp / seconds_per_day;
+        
+        // This is a simplified calculation - might need adjustment for leap years
+        let year = 1970 + (days / 365);
+        let day_of_year = days % 365;
+        
+        // Month names
+        let months = vector[
+            b"JAN", b"FEB", b"MAR", b"APR", b"MAY", b"JUN",
+            b"JUL", b"AUG", b"SEP", b"OCT", b"NOV", b"DEC"
+        ];
+        
+        // Simplified month calculation
+        let month_days = vector[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let mut month = 0;
+        let mut day = day_of_year;
+        
+        while (day > *vector::borrow(&month_days, month)) {
+            day = day - *vector::borrow(&month_days, month);
+            month = month + 1;
+        };
+        
+        // Format as DDMMMYYYY
+        string_utils::format3(
+            &b"{:0>2}{}{}",
+            day,
+            string::utf8(*vector::borrow(&months, month)),
+            year
+        )
+    }
+
+    // Add helper function for card URI
+    fun get_card_uri(card: String, position: String): String {
+        let (_found, card_no) = vector::find(&MAJOR_ARCANA_NAME, |obj|{
+            let c: &vector<u8> = obj;
+            string::bytes(&card) == c
+        });
+        
+        let card_uri = if(position == string::utf8(b"upright")){
+            string::utf8(MAJOR_ARCANA_CARD_URI_UPRIGHT)
+        }else{
+            string::utf8(MAJOR_ARCANA_CARD_URI_REVERSE)
+        };
+        string::append(&mut card_uri, string_utils::format1(&b"{}.png", card_no));
+        card_uri
+    }
+
     //==============================================================================================
     // View functions
     //==============================================================================================
@@ -511,6 +665,13 @@ module admin::tarot {
             &signer::address_of(&account::create_signer_with_capability(&state.signer_cap)),
             &string::utf8(COLLECTION_NAME)
         )
+    }
+
+    // Add view function for horoscope collection count
+    #[view]
+    public fun get_horoscope_collection_count(): u64 acquires State {
+        let state = &State[@admin];
+        state.horoscope_minted
     }
 
     //==============================================================================================
